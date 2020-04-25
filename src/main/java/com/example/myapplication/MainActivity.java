@@ -59,6 +59,7 @@ public class MainActivity extends AppCompatActivity
 
         TextView ipTextView = findViewById(R.id.textView1);
         ipAddress = getLocalIpAddress();
+
         if (ipAddress != null) {
             ipTextView.setText("Please Access:" + "http://" + ipAddress + ":" + PORT);
         } else
@@ -68,7 +69,6 @@ public class MainActivity extends AppCompatActivity
             // サーバをスタート
             server.start();
         } catch (IOException ioe) { }
-
         addClickListener();
     }
 
@@ -126,9 +126,9 @@ public class MainActivity extends AppCompatActivity
         orientationTextView.setText(strTmp);
 
         orientationJson="{"+
-                 " X: " + sensorX +
-                 " Y: " + sensorY +
-                 " Z: " + sensorZ + "}";
+                 "X:" + sensorX +
+                 "Y:" + sensorY +
+                 "Z:" + sensorZ + "}";
     }
 
     @Override
@@ -141,11 +141,16 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onClick(View view) {
                 if(ioButton.getText().toString().equals("start")){
+                    //角度差Viewを可視化
+                    diffOrientationTextView.setVisibility(View.VISIBLE);
                     ioButton.setText(R.string.StopButton);
+                    //String url="https://www.instagram.com/shibuya.shogo/?__a=1";
                     String url="http://"+ipFormView.getText();
-                   // new OrientationHttpTask(diffOrientationTextView,orientationJson).execute(url);
+                    new OrientationHttpTask(diffOrientationTextView,orientationJson).execute(url);
                     //別スレッドでループ処理
+                    Log.d("fromMainActivity",url);
                 }else{
+                    diffOrientationTextView.setVisibility(View.GONE);
                     ioButton.setText(R.string.StartButton);
                     if(isServer){
                         //サーバーである場合は停止signalをレスポンスで送信
@@ -183,6 +188,7 @@ public class MainActivity extends AppCompatActivity
                     }
                 });
                 isServer=false;
+                diffOrientationTextView.setVisibility(View.GONE);
                 //Serverからendを送信したらクライアントからもendを送信
             }else{
                 switch (ioButton.getText().toString()){
@@ -196,6 +202,7 @@ public class MainActivity extends AppCompatActivity
                             });
                             Log.d("isServer",isServer.toString());
                             isServer=true;
+                            diffOrientationTextView.setVisibility(View.VISIBLE);
                         }else{
                             isServer=false;
                         }
@@ -216,5 +223,4 @@ public class MainActivity extends AppCompatActivity
             return NanoHTTPD.newChunkedResponse(Response.Status.OK, MIME_HTML, jsonStream);
         }
     }
-
 }
