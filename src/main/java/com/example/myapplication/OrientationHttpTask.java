@@ -2,7 +2,6 @@ package com.example.myapplication;
 
 import android.os.AsyncTask;
 import android.util.Log;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import org.json.JSONException;
@@ -17,17 +16,20 @@ import java.net.URL;
 import java.util.Map;
 
 public class OrientationHttpTask extends AsyncTask<String,Void,String> {
-    public OrientationHttpTask(TextView view,ScrollView sv){
-        jsonView=view;
-        contentScroll=sv;
+    public OrientationHttpTask(TextView view,String clientParam){
+        diffOrientationTextView=view;
+        clientOrientation = clientParam;
     }
-    TextView jsonView;
-    String serverOrientation="";
-    ScrollView contentScroll;
+    TextView diffOrientationTextView;
+    String serverOrientation="";//Stringでなく配列
+    String clientOrientation;//Stringでなく配列
 
     protected String doInBackground(String... url){
         try {
-            serverOrientation=httpGetRequest(url[0],"UTF-8",null);
+            serverOrientation=httpGetRequest(
+                    url[0]+"?"+ clientOrientation,//urlの後ろにクライアントのパラメータ
+                    "UTF-8",
+                    null);
             Log.d("json",serverOrientation);
         }catch (IOException e){
 
@@ -37,22 +39,24 @@ public class OrientationHttpTask extends AsyncTask<String,Void,String> {
 
     protected void onPostExecute(String result){
         //Log.d("jsonLast",serverOrientation);
-        JSONObject userJson;
-//        ImageView iconImageView=new ImageView(this);
+        float sensorX, sensorY, sensorZ;
+        JSONObject serverOrientationJson;
+        JSONObject clientOrientationJson;
         try {
-            userJson=new JSONObject(result);
-            //userId=userJson.getJSONObject("graphql").getString("id");
+            serverOrientationJson=new JSONObject(result);
+            clientOrientationJson=new JSONObject(clientOrientation);
+//            sensorX=clientOrientationJson.getString("x")-serverOrientationJson.getString("x");
+//            sensorY=clientOrientationJson-serverOrientationJson.getString("y");
+//            sensorZ=clientOrientationJson-serverOrientationJson.getString("z");
 
         }catch(JSONException e){
 
         }
-
-//        contentScroll.removeView(jsonView);
-//        jsonView.setText(userId);
-//        contentScroll.addView(jsonView);
+        //画面に計算結果を反映
+//        diffOrientationTextView.setText(
+//        "x"+x+"y"+y+"z"+z
+//        );
     }
-
-    //"https://www.instagram.com/raphaelangel8183/?__a=1"
 
     public String httpGetRequest(String endpoint, String encoding, Map<String, String> headers) throws IOException {
 

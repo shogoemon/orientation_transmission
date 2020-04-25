@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import java.io.ByteArrayInputStream;
@@ -32,6 +33,7 @@ public class MainActivity extends AppCompatActivity
     //テキストの表示部
     private TextView orientationTextView,diffOrientationTextView;
     private Button ioButton;
+    private EditText ipFormView;
 
     private WebServer server;
     // サーバのポートを8080に設定
@@ -53,6 +55,7 @@ public class MainActivity extends AppCompatActivity
         orientationTextView= findViewById(R.id.orientation_text_view);
         diffOrientationTextView= findViewById(R.id.orientation_diff_text_view);
         ioButton=findViewById(R.id.ioButton);
+        ipFormView=findViewById(R.id.ipForm);
 
         TextView ipTextView = findViewById(R.id.textView1);
         ipAddress = getLocalIpAddress();
@@ -139,6 +142,8 @@ public class MainActivity extends AppCompatActivity
             public void onClick(View view) {
                 if(ioButton.getText().toString().equals("start")){
                     ioButton.setText(R.string.StopButton);
+                    String url="http://"+ipFormView.getText();
+                   // new OrientationHttpTask(diffOrientationTextView,orientationJson).execute(url);
                     //別スレッドでループ処理
                 }else{
                     ioButton.setText(R.string.StartButton);
