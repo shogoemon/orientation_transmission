@@ -13,6 +13,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -126,8 +129,8 @@ public class MainActivity extends AppCompatActivity
         orientationTextView.setText(strTmp);
 
         orientationJson="{"+
-                 "X:" + sensorX +
-                 "Y:" + sensorY +
+                 "X:" + sensorX +","+
+                 "Y:" + sensorY +","+
                  "Z:" + sensorZ + "}";
     }
 
@@ -179,6 +182,9 @@ public class MainActivity extends AppCompatActivity
             InputStream jsonStream=null;
             //Log.d("requestUri",parameters.get("NanoHttpd.QUERY_STRING"));
             String clientParam=parameters.get("NanoHttpd.QUERY_STRING");
+            if(clientParam==null){
+                clientParam="";
+            }
             if(clientParam.contains("end")){
                 //ボタンをstartに変える（クライアントになれる状態）
                 handler.post(new Runnable() {
@@ -188,9 +194,41 @@ public class MainActivity extends AppCompatActivity
                     }
                 });
                 isServer=false;
-                diffOrientationTextView.setVisibility(View.GONE);
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        diffOrientationTextView.setVisibility(View.GONE);
+                    }
+                });
                 //Serverからendを送信したらクライアントからもendを送信
             }else{
+                //clientParamを画面に反映
+                float sensorX=0.0f, sensorY=0.0f, sensorZ=0.0f;
+                JSONObject serverOrientationJson;
+                JSONObject clientOrientationJson;
+                try{
+                    serverOrientationJson=new JSONObject(orientationJson);
+                    clientOrientationJson=new JSONObject(clientParam);
+                    sensorX=Float.parseFloat(clientOrientationJson.getString("X")) -
+                            Float.parseFloat(serverOrientationJson.getString("X"));
+                    sensorY=Float.parseFloat(clientOrientationJson.getString("Y")) -
+                            Float.parseFloat(serverOrientationJson.getString("Y"));
+                    sensorZ=Float.parseFloat(clientOrientationJson.getString("Z")) -
+                            Float.parseFloat(serverOrientationJson.getString("Z"));
+                }catch (JSONException e){
+                    Log.d("fromMainActivity",e.toString());
+                }
+                final String strTmp = "傾き(°)server\n"
+                        + " X: " + sensorX + "\n"
+                        + " Y: " + sensorY + "\n"
+                        + " Z: " + sensorZ + "\n";
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        diffOrientationTextView.setText(strTmp);
+                    }
+                });
+                Log.d("fromMainActivity",strTmp);
                 switch (ioButton.getText().toString()){
                     case "start":{
                         if(isServer!=null){
@@ -202,7 +240,12 @@ public class MainActivity extends AppCompatActivity
                             });
                             Log.d("isServer",isServer.toString());
                             isServer=true;
-                            diffOrientationTextView.setVisibility(View.VISIBLE);
+                            handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    diffOrientationTextView.setVisibility(View.VISIBLE);
+                                }
+                            });
                         }else{
                             isServer=false;
                         }
@@ -211,6 +254,7 @@ public class MainActivity extends AppCompatActivity
                     case "stop":{break;}
                 }
             }
+            System.setProperty("http.keepAlive", "false");
             try{
                 if(isServer){
                     jsonStream = new ByteArrayInputStream(orientationJson.getBytes("utf-8"));
@@ -220,7 +264,7 @@ public class MainActivity extends AppCompatActivity
             }catch (UnsupportedEncodingException error){
 
             }
-            return NanoHTTPD.newChunkedResponse(Response.Status.OK, MIME_HTML, jsonStream);
+            return NanoHTTPD.newChunkedResponse(Response.Status.OK,"application/json", jsonStream);
         }
     }
 }

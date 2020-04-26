@@ -29,10 +29,11 @@ public class OrientationHttpTask extends AsyncTask<String,Void,String> {
 
     protected String doInBackground(String... url){
         headersMap.put("User-Agent","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36");
+        headersMap.put("Connection","close");
         try {
             System.setProperty("http.keepAlive", "false");
             serverOrientation=httpGetRequest(
-                    url[0],//+"?"+clientOrientation,//urlの後ろにクライアントのパラメータ
+                    url[0]+"?"+clientOrientation,//urlの後ろにクライアントのパラメータ
                     "UTF-8",
                     headersMap);
             Log.d("json",serverOrientation);
@@ -55,21 +56,22 @@ public class OrientationHttpTask extends AsyncTask<String,Void,String> {
             try {
                 serverOrientationJson=new JSONObject(result);
                 clientOrientationJson=new JSONObject(clientOrientation);
-                sensorX=Float.parseFloat(clientOrientationJson.getString("x")) -
-                        Float.parseFloat(serverOrientationJson.getString("x"));
-                sensorX=Float.parseFloat(clientOrientationJson.getString("y")) -
-                        Float.parseFloat(serverOrientationJson.getString("y"));
-                sensorX=Float.parseFloat(clientOrientationJson.getString("z")) -
-                        Float.parseFloat(serverOrientationJson.getString("z"));
+                sensorX=Float.parseFloat(clientOrientationJson.getString("X")) -
+                        Float.parseFloat(serverOrientationJson.getString("X"));
+                sensorY=Float.parseFloat(clientOrientationJson.getString("Y")) -
+                        Float.parseFloat(serverOrientationJson.getString("Y"));
+                sensorZ=Float.parseFloat(clientOrientationJson.getString("Z")) -
+                        Float.parseFloat(serverOrientationJson.getString("Z"));
             }catch(JSONException e){
 
             }
             //画面に計算結果を反映
-            String strTmp = "傾き(°)\n"
+            String strTmp = "傾き(°)client\n"
                     + " X: " + sensorX + "\n"
                     + " Y: " + sensorY + "\n"
                     + " Z: " + sensorZ + "\n";
             diffOrientationTextView.setText(strTmp);
+            Log.d("fromHttpTask",strTmp);
         }
         Log.d("fromHttpTask","before");
     }
