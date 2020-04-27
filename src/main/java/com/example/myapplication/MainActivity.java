@@ -30,7 +30,7 @@ import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 
 public class MainActivity extends AppCompatActivity
-        implements SensorEventListener {
+        implements SensorEventListener,OrientationHttpTask.CallBackTask {
     //センサーを管理
     private SensorManager sensorManager;
     //テキストの表示部
@@ -45,6 +45,7 @@ public class MainActivity extends AppCompatActivity
     String orientationJson="";
     Boolean isServer=false;
     final Handler handler = new Handler();
+    String url="";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +66,12 @@ public class MainActivity extends AppCompatActivity
 
         if (ipAddress != null) {
             ipTextView.setText("Please Access:" + "http://" + ipAddress + ":" + PORT);
+            if(ipFormView.getText().toString().equals(ipAddress + ":" + PORT)){
+                String lastChar=ipAddress.substring(ipAddress.length()-1);
+                ipAddress=ipAddress.substring(0,ipAddress.length()-1)+(Integer.parseInt(lastChar)+1);
+                ipFormView.setText(ipAddress + ":" + PORT);
+            }
+            Log.d("fromOnCreate",ipFormView.getText().toString());
         } else
             ipTextView.setText("Wi-Fi Network Not Available");
         server = new WebServer();
@@ -140,6 +147,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     public void addClickListener(){
+        final OrientationHttpTask.CallBackTask callBackTask=this;
         ioButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -147,23 +155,53 @@ public class MainActivity extends AppCompatActivity
                     //角度差Viewを可視化
                     diffOrientationTextView.setVisibility(View.VISIBLE);
                     ioButton.setText(R.string.StopButton);
-                    //String url="https://www.instagram.com/shibuya.shogo/?__a=1";
-                    String url="http://"+ipFormView.getText();
-                    new OrientationHttpTask(diffOrientationTextView,orientationJson).execute(url);
-                    //別スレッドでループ処理
+
+                    url="http://"+ipFormView.getText();
+                    OrientationHttpTask ohTask= new OrientationHttpTask(diffOrientationTextView,orientationJson);
+                    ohTask.setCallbackTask(callBackTask);
+                    ohTask.execute(url);
+
                     Log.d("fromMainActivity",url);
                 }else{
-                    diffOrientationTextView.setVisibility(View.GONE);
                     ioButton.setText(R.string.StartButton);
-                    if(isServer){
-                        //サーバーである場合は停止signalをレスポンスで送信
-                        isServer=null;
-                    }else{
-                        //クライアントである場合はループを停止
-                    }
+                    isServer=null;
+                    //サーバーである場合は停止signalをレスポンスで送信
+                    //クライアントである場合はループを停止
                 }
             }
         });
+    }
+
+    @Override
+    public void callbackFunction(String result){
+        if(result.equals("end")){
+            //ループ停止
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    ioButton.setText(R.string.StartButton);
+                    diffOrientationTextView.setVisibility(View.GONE);
+                }
+            });
+        }else{
+            if(isServer==null){
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        ioButton.setText(R.string.StartButton);
+                    }
+                });
+                isServer=false;
+                OrientationHttpTask ohTask= new OrientationHttpTask(diffOrientationTextView,"end");
+                ohTask.setCallbackTask(this);
+                ohTask.execute(url);
+            }else{
+                //ループ
+                OrientationHttpTask ohTask= new OrientationHttpTask(diffOrientationTextView,orientationJson);
+                ohTask.setCallbackTask(this);
+                ohTask.execute(url);
+            }
+        }
     }
 
     /*
@@ -180,12 +218,11 @@ public class MainActivity extends AppCompatActivity
                               Map<String, String> header, Map<String, String> parameters,
                               Map<String, String> files) {
             InputStream jsonStream=null;
-            //Log.d("requestUri",parameters.get("NanoHttpd.QUERY_STRING"));
             String clientParam=parameters.get("NanoHttpd.QUERY_STRING");
             if(clientParam==null){
                 clientParam="";
             }
-            if(clientParam.contains("end")){
+            if(clientParam.equals("end")||isServer==null){
                 //ボタンをstartに変える（クライアントになれる状態）
                 handler.post(new Runnable() {
                     @Override
@@ -200,7 +237,6 @@ public class MainActivity extends AppCompatActivity
                         diffOrientationTextView.setVisibility(View.GONE);
                     }
                 });
-                //Serverからendを送信したらクライアントからもendを送信
             }else{
                 //clientParamを画面に反映
                 float sensorX=0.0f, sensorY=0.0f, sensorZ=0.0f;
@@ -229,29 +265,22 @@ public class MainActivity extends AppCompatActivity
                     }
                 });
                 Log.d("fromMainActivity",strTmp);
-                switch (ioButton.getText().toString()){
-                    case "start":{
-                        if(isServer!=null){
-                            handler.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    ioButton.setText(R.string.StopButton);
-                                }
-                            });
-                            Log.d("isServer",isServer.toString());
-                            isServer=true;
-                            handler.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    diffOrientationTextView.setVisibility(View.VISIBLE);
-                                }
-                            });
-                        }else{
-                            isServer=false;
+
+                if(ioButton.getText().toString().equals("start")){
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            ioButton.setText(R.string.StopButton);
                         }
-                        break;
-                    }
-                    case "stop":{break;}
+                    });
+                    Log.d("isServer",isServer.toString());
+                    isServer=true;
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            diffOrientationTextView.setVisibility(View.VISIBLE);
+                        }
+                    });
                 }
             }
             System.setProperty("http.keepAlive", "false");

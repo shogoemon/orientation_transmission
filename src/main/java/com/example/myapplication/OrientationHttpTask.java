@@ -2,7 +2,6 @@ package com.example.myapplication;
 
 import android.os.AsyncTask;
 import android.util.Log;
-import android.view.View;
 import android.widget.TextView;
 
 import org.json.JSONException;
@@ -16,6 +15,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+//import java.util.function.Predicate;
 
 public class OrientationHttpTask extends AsyncTask<String,Void,String> {
     public OrientationHttpTask(TextView view,String clientParam){
@@ -23,9 +23,18 @@ public class OrientationHttpTask extends AsyncTask<String,Void,String> {
         clientOrientation = clientParam;
     }
     TextView diffOrientationTextView;
-    String serverOrientation="";//Stringでなく配列
-    String clientOrientation;//Stringでなく配列
-    Map<String,String> headersMap=new HashMap<>();
+    private String serverOrientation;
+    private String clientOrientation;
+    private Map<String,String> headersMap=new HashMap<>();
+    private CallBackTask callbackTask;
+
+    interface CallBackTask{
+        void callbackFunction(String result);
+    }
+
+    public void setCallbackTask(CallBackTask task){
+        callbackTask=task;
+    }
 
     protected String doInBackground(String... url){
         headersMap.put("User-Agent","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36");
@@ -38,7 +47,8 @@ public class OrientationHttpTask extends AsyncTask<String,Void,String> {
                     headersMap);
             Log.d("json",serverOrientation);
         }catch (IOException e){
-            Log.d("error",e.toString());
+            Log.d("fromDoInBackground",url[0]+"?"+clientOrientation);
+            Log.d("fromDoInBackground",e.toString());
         }
         //Log.d("",url[0]+"?"+clientOrientation);
         return serverOrientation;
@@ -48,11 +58,7 @@ public class OrientationHttpTask extends AsyncTask<String,Void,String> {
         float sensorX=0.0f, sensorY=0.0f, sensorZ=0.0f;
         JSONObject serverOrientationJson;
         JSONObject clientOrientationJson;
-        if(result.equals("end")){
-            diffOrientationTextView.setVisibility(View.GONE);
-            //ループを停止してendを送信
-        }else{
-            //Log.d("jsonLast",serverOrientation);
+        if(!result.equals("end")){
             try {
                 serverOrientationJson=new JSONObject(result);
                 clientOrientationJson=new JSONObject(clientOrientation);
@@ -63,7 +69,7 @@ public class OrientationHttpTask extends AsyncTask<String,Void,String> {
                 sensorZ=Float.parseFloat(clientOrientationJson.getString("Z")) -
                         Float.parseFloat(serverOrientationJson.getString("Z"));
             }catch(JSONException e){
-
+                Log.d("onPostExecute",e.toString());
             }
             //画面に計算結果を反映
             String strTmp = "傾き(°)client\n"
@@ -73,7 +79,8 @@ public class OrientationHttpTask extends AsyncTask<String,Void,String> {
             diffOrientationTextView.setText(strTmp);
             Log.d("fromHttpTask",strTmp);
         }
-        Log.d("fromHttpTask","before");
+
+        callbackTask.callbackFunction(result);
     }
 
     public String httpGetRequest(String endpoint, String encoding, Map<String, String> headers) throws IOException {
